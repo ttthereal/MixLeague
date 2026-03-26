@@ -164,9 +164,15 @@ const ModalidadePage = {
     area.classList.remove('hidden');
     const cfg   = Sorteio.MODALIDADES[this.modalidadeAtual];
     const label = cfg ? cfg.label : this.modalidadeAtual;
+    const semSorteio = cfg && cfg.semSorteio;
 
     const tituloEl = document.getElementById('sorteio-titulo');
-    if (tituloEl) tituloEl.textContent = `Tiers Sorteados para ${label}`;
+    if (tituloEl) tituloEl.textContent = semSorteio ? `Configuração para ${label}` : `Tiers Sorteados para ${label}`;
+
+    // Para modalidades sem sorteio, auto-preenche todos os tiers
+    if (semSorteio && this.tiersSorteados.length === 0) {
+      this.tiersSorteados = [1, 2, 3, 4, 5];
+    }
 
     // Botões admin
     const btnSortear = document.getElementById('btn-sortear');
@@ -174,7 +180,7 @@ const ModalidadePage = {
     const btnProxima  = document.getElementById('btn-proxima-modalidade');
 
     if (btnSortear) {
-      if (Auth.isAdmin()) {
+      if (Auth.isAdmin() && !semSorteio) {
         btnSortear.classList.remove('hidden');
         btnSortear.disabled = false;
       } else {

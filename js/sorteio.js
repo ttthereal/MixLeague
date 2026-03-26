@@ -8,8 +8,8 @@ const Sorteio = {
     x1:            { label: 'X1',             icon: '🎯', qtdTiers: 1, jogadoresPorTime: 1 },
     braco_direito: { label: 'Braço Direito',  icon: '💪', qtdTiers: 2, jogadoresPorTime: 2 },
     retake:        { label: 'Retake',          icon: '🔫', qtdTiers: 4, jogadoresPorTime: 4 },
-    '5x5':         { label: '5x5',             icon: '⚔️', qtdTiers: 5, jogadoresPorTime: 5 },
-    corrida_armada:{ label: 'Corrida Armada', icon: '🏃', qtdTiers: 5, jogadoresPorTime: 5 }
+    '5x5':         { label: '5x5',             icon: '⚔️', qtdTiers: 5, jogadoresPorTime: 5, semSorteio: true },
+    corrida_armada:{ label: 'Corrida Armada', icon: '🏃', qtdTiers: 5, jogadoresPorTime: 5, semSorteio: true }
   },
 
   // ─── SORTEIO DE TIERS ─────────────────────────────────────────────────────────
