@@ -274,7 +274,7 @@ const Draft = {
           class="capitao-card ${esSelecionado ? 'selecionado' : ''}"
           onclick="Draft._toggleCapitao('${jogador.id}')">
           <div class="cap-check" id="cap-check-${jogador.id}">${esSelecionado ? '✓' : ''}</div>
-          <span class="font-semibold text-sm text-[#F8FAFC] flex-1 truncate">${jogador.nick}</span>
+          <span class="font-semibold text-sm text-[#F8FAFC] flex-1 truncate">${sanitize(jogador.nick)}</span>
           <span class="text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${tierBadge}">${tierLabel}</span>
         </div>
       `;
@@ -412,10 +412,10 @@ const Draft = {
                     <span class="bg-[#1E293B] text-[#F5A623] font-bold text-xs px-2 py-1 rounded-full">#${i + 1}</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span class="text-lg mr-2">${pais.bandeira || ''}</span>
-                    <span class="font-semibold text-[#F8FAFC]">${pais.nome}</span>
+                    <span class="text-lg mr-2">${sanitize(pais.bandeira || '')}</span>
+                    <span class="font-semibold text-[#F8FAFC]">${sanitize(pais.nome)}</span>
                   </td>
-                  <td class="px-4 py-3 text-[#F8FAFC] font-medium">${assignedPaises[pais.id]}</td>
+                  <td class="px-4 py-3 text-[#F8FAFC] font-medium">${sanitize(assignedPaises[pais.id])}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -463,7 +463,7 @@ const Draft = {
           <div class="flex gap-2 flex-wrap">
             ${picksNestaRodada.map(paisId => {
               const p = paisesUsados.find(x => x.id === paisId);
-              return p ? `<span class="bg-[#1E293B] border border-[#334155] rounded px-2 py-0.5 text-xs font-medium">${p.bandeira || ''} ${p.nome}</span>` : '';
+              return p ? `<span class="bg-[#1E293B] border border-[#334155] rounded px-2 py-0.5 text-xs font-medium">${sanitize(p.bandeira || '')} ${sanitize(p.nome)}</span>` : '';
             }).join('')}
             ${eligible.length === 0 ? `<span class="text-[#94A3B8] text-xs italic">todos têm capitão neste tier</span>` : ''}
           </div>
@@ -693,10 +693,23 @@ const Draft = {
     this.animarPick(jogadorId);
 
     try {
-      const pickAtualIdx = this.estado.pickAtual || 0;
-      const ordem        = this._toArray(this.estado.ordem);
-      const ordemTier    = this._toArray(this.estado.ordemTier);
-      const numTimes     = this.estado.numTimes  || 2;
+      // Re-lê estado mais recente para evitar race condition entre dois capitães
+      const estadoFresh = await DB.getDraft();
+      if (!estadoFresh || estadoFresh.status !== 'em_andamento') {
+        this._showToast('O draft foi encerrado ou reiniciado.', 'info');
+        return;
+      }
+      if ((estadoFresh.pickAtual || 0) !== (this.estado.pickAtual || 0) ||
+          estadoFresh.vezDe !== vezDe) {
+        this._showToast('Outro pick acabou de ser registrado. Aguarde a atualização.', 'info');
+        return;
+      }
+
+      const pickAtualIdx = estadoFresh.pickAtual || 0;
+      const ordem        = this._toArray(estadoFresh.ordem);
+      const ordemTier    = this._toArray(estadoFresh.ordemTier);
+      const numTimes     = estadoFresh.numTimes  || 2;
+      const picks        = estadoFresh.picks || {};
 
       const novoPicks = { ...picks };
       novoPicks[`pick_${pickAtualIdx}`] = {
@@ -710,11 +723,11 @@ const Draft = {
       const totalPicks     = ordem.length;
 
       if (proximoPickIdx >= totalPicks) {
-        await DB.salvarDraft({ ...this.estado, picks: novoPicks, pickAtual: proximoPickIdx, vezDe: null, tierAtual: null });
+        await DB.salvarDraft({ ...estadoFresh, picks: novoPicks, pickAtual: proximoPickIdx, vezDe: null, tierAtual: null });
         await this.finalizarDraft(novoPicks, ordem);
       } else {
         await DB.salvarDraft({
-          ...this.estado,
+          ...estadoFresh,
           picks:       novoPicks,
           pickAtual:   proximoPickIdx,
           vezDe:       ordem[proximoPickIdx],
@@ -875,7 +888,7 @@ const Draft = {
         <div id="player-card-${jogador.id}"
           class="player-card ${cssExtra} fade-slide-up bg-[#0F172A] border border-[#334155] rounded-lg px-4 py-3 flex items-center justify-between gap-2 transition"
           ${onClickAttr}>
-          <span class="font-semibold text-sm ${foiEscolhido ? 'line-through text-[#94A3B8]' : 'text-[#F8FAFC]'}">${jogador.nick}</span>
+          <span class="font-semibold text-sm ${foiEscolhido ? 'line-through text-[#94A3B8]' : 'text-[#F8FAFC]'}">${sanitize(jogador.nick)}</span>
           <span class="text-xs font-bold px-2 py-0.5 rounded-full ${tierBadge}">${tierLabel}</span>
         </div>
       `;
@@ -934,7 +947,7 @@ const Draft = {
           <div class="flex items-center justify-between py-1.5 border-b border-[#334155] last:border-0">
             <span class="text-xs font-bold px-2 py-0.5 rounded-full ${tierBadge} shrink-0">T${tier}</span>
             <span class="${displayNick ? 'slot-filled' : 'slot-empty'} text-sm ml-3 truncate">
-              ${displayNick ? (isCapSlot ? `⚑ ${displayNick}` : displayNick) : '— vazio —'}
+              ${displayNick ? (isCapSlot ? `⚑ ${sanitize(displayNick)}` : sanitize(displayNick)) : '— vazio —'}
             </span>
           </div>
         `;
@@ -947,10 +960,10 @@ const Draft = {
         <div class="bg-[#1E293B] border-2 ${ehAtivo ? 'active-team-card border-[#F5A623]' : 'border-[#334155]'} rounded-xl p-4 transition-all">
           <div class="flex items-center justify-between mb-1">
             <div class="flex items-center gap-2">
-              <span class="text-2xl">${pais.bandeira || ''}</span>
+              <span class="text-2xl">${sanitize(pais.bandeira || '')}</span>
               <div>
-                <h3 class="font-bold text-[#F8FAFC] leading-tight">${pais.nome}</h3>
-                ${nickCapitao ? `<p class="text-xs text-[#F5A623]">Cap: ${nickCapitao}</p>` : ''}
+                <h3 class="font-bold text-[#F8FAFC] leading-tight">${sanitize(pais.nome)}</h3>
+                ${nickCapitao ? `<p class="text-xs text-[#F5A623]">Cap: ${sanitize(nickCapitao)}</p>` : ''}
                 <p class="text-xs text-[#94A3B8]">${totalPicks}/5 jogadores</p>
               </div>
             </div>
@@ -989,7 +1002,7 @@ const Draft = {
     const tierAtual = this.estado.tierAtual;
     const TIER_COLORS = { 1: '#F5A623', 2: '#94A3B8', 3: '#CD7F32', 4: '#27AE60', 5: '#3B82F6' };
     const tierColor = TIER_COLORS[tierAtual] || '#F8FAFC';
-    textEl.innerHTML = `VEZ DE: ${paisNome}  —  Cap: <strong>${nickCap}</strong>  |  Tier: <span style="color:${tierColor};font-weight:bold">T${tierAtual}</span>  |  Pick ${pickNum}/${totalPicks}`;
+    textEl.innerHTML = `VEZ DE: ${sanitize(paisNome)}  —  Cap: <strong>${sanitize(nickCap)}</strong>  |  Tier: <span style="color:${tierColor};font-weight:bold">T${Number(tierAtual)}</span>  |  Pick ${Number(pickNum)}/${Number(totalPicks)}`;
     banner.classList.remove('hidden');
   },
 
