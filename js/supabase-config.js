@@ -9,8 +9,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function seedInitialData() {
   try {
-    // Só executa se jogadores ainda não existirem
-    const { data, error } = await sb.from('jogadores').select('id').limit(1);
+    // Só executa se a config principal ainda não existir
+    const { data, error } = await sb.from('config').select('id').eq('id', 'main').limit(1);
     if (error) { console.error('[Seed] Erro ao verificar dados:', error); return; }
     if (data && data.length > 0) { console.log('[Seed] Dados já existem, seed ignorado.'); return; }
 
