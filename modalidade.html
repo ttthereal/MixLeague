@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modalidades — Mix League</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #0F172A; color: #F8FAFC; }
+
+    /* Tier slot spin keyframe */
+    @keyframes slotPulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    .tier-slot.revealing { animation: slotPulse 0.3s ease; }
+
+    /* Shimmer para loading */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    /* Card hover glow */
+    .modalidade-card:hover { transform: translateY(-2px); }
+    .modalidade-card { transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+
+    /* Botão primário */
+    .btn-primary {
+      background: #F5A623;
+      color: #0F172A;
+      font-weight: 800;
+      border-radius: 0.75rem;
+      padding: 0.625rem 1.5rem;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Botão secondary */
+    .btn-secondary {
+      background: transparent;
+      color: #F5A623;
+      font-weight: 700;
+      border: 2px solid #F5A623;
+      border-radius: 0.75rem;
+      padding: 0.625rem 1.5rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-secondary:hover:not(:disabled) { background: #F5A62315; transform: translateY(-1px); }
+    .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Roleta container */
+    #roleta-slots {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      min-height: 5rem;
+      align-items: center;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0F172A]">
+
+  <!-- ─── NAV ─────────────────────────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-50 bg-[#1E293B]/95 backdrop-blur border-b border-[#334155]">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <!-- Logo -->
+      <a href="dashboard.html" class="flex items-center gap-2 group">
+        <span class="text-2xl">🏅</span>
+        <span class="font-black text-[#F5A623] text-lg tracking-tight group-hover:opacity-90 transition-opacity">Mix League</span>
+      </a>
+
+      <!-- Links -->
+      <div class="hidden sm:flex items-center gap-1 text-sm font-medium">
+        <a href="dashboard.html"  class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#334155]/60 transition-colors">Dashboard</a>
+        <a href="draft.html"      class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#334155]/60 transition-colors">Draft</a>
+        <a href="modalidade.html" class="px-3 py-1.5 rounded-lg text-[#F5A623] bg-[#F5A623]/10 font-semibold">Modalidades</a>
+        <a href="admin.html" id="nav-admin" style="display:none" class="px-3 py-1.5 rounded-lg text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#334155]/60 transition-colors">Admin</a>
+      </div>
+
+      <!-- User + logout -->
+      <div class="flex items-center gap-2">
+        <span id="nav-user-nick" class="text-[#94A3B8] text-sm hidden sm:block"></span>
+        <button onclick="Auth.logout()"
+                class="text-xs text-[#94A3B8] hover:text-[#E74C3C] transition-colors px-2 py-1 rounded-lg hover:bg-[#E74C3C]/10">
+          Sair
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────────── -->
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-10">
+
+    <!-- ── HEADER ── -->
+    <section class="text-center space-y-2">
+      <h1 class="text-3xl sm:text-4xl font-black text-[#F8FAFC] tracking-tight">
+        🎮 Modalidades
+      </h1>
+      <div class="flex items-center justify-center gap-3 flex-wrap">
+        <span id="torneio-status"
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-[#334155] text-[#94A3B8]">
+          Aguardando
+        </span>
+        <span class="text-[#94A3B8] text-sm">
+          Fase: <span id="torneio-fase" class="text-[#F8FAFC] font-semibold">—</span>
+        </span>
+      </div>
+    </section>
+
+    <!-- ── SELEÇÃO DE MODALIDADE ── -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-[#F8FAFC]">Escolha a Modalidade</h2>
+        <span id="label-admin-only" class="text-xs text-[#94A3B8] italic hidden">Somente admin pode selecionar</span>
+      </div>
+
+      <!-- Grid de cards -->
+      <div id="modalidades-grid"
+           class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <!-- Preenchido por modalidade.js -->
+        <div class="col-span-full text-center text-[#94A3B8] py-6 text-sm animate-pulse">
+          Carregando modalidades...
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ÁREA DE SORTEIO ── -->
+    <section id="area-sorteio" class="hidden">
+      <div class="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+
+        <!-- Cabeçalho -->
+        <div class="px-6 py-4 bg-[#0F172A]/40 border-b border-[#334155] flex items-center justify-between flex-wrap gap-3">
+          <h2 id="sorteio-titulo" class="text-lg font-bold text-[#F8FAFC]">
+            Tiers Sorteados
+          </h2>
+          <!-- Botão sortear (admin) -->
+          <button id="btn-sortear"
+                  onclick="ModalidadePage.sortearTiers()"
+                  class="btn-primary hidden flex items-center gap-2 text-sm">
+            🎲 Sortear Tiers
+          </button>
+        </div>
+
+        <!-- Roleta de tiers -->
+        <div class="px-6 py-8">
+          <div class="flex flex-col items-center gap-4">
+            <p class="text-[#94A3B8] text-sm" id="roleta-hint">
+              Aguardando sorteio...
+            </p>
+            <!-- Slots animados -->
+            <div id="roleta-slots" class="flex gap-3 flex-wrap justify-center min-h-[5rem] items-center">
+            </div>
+
+            <!-- Legenda dos tiers -->
+            <div id="tier-legenda" class="hidden flex-wrap justify-center gap-2 mt-2">
+              <span class="text-xs text-[#94A3B8] mr-1 self-center">Legenda:</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:#FFD70022;color:#FFD700;border:1px solid #FFD70055;">T1 Elite</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:#C0C0C022;color:#C0C0C0;border:1px solid #C0C0C055;">T2 Pro</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:#CD7F3222;color:#CD7F32;border:1px solid #CD7F3255;">T3 Semi-Pro</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:#4CAF5022;color:#4CAF50;border:1px solid #4CAF5055;">T4 Amateur</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:#2196F322;color:#2196F3;border:1px solid #2196F355;">T5 Iniciante</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PARTICIPANTES POR TIME ── -->
+    <section id="area-participantes" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-[#F8FAFC]">Participantes por Time</h2>
+        <!-- Botão confirmar + gerar bracket (admin) -->
+        <button id="btn-confirmar"
+                onclick="ModalidadePage.confirmarEGerarBracket()"
+                class="btn-primary hidden flex items-center gap-2 text-sm">
+          ✅ Confirmar e Gerar Bracket
+        </button>
+      </div>
+
+      <div id="participantes-grid"
+           class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <!-- Preenchido por modalidade.js -->
+      </div>
+    </section>
+
+    <!-- ── BRACKET ── -->
+    <section id="bracket-container-wrapper" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-[#F8FAFC]">🏆 Chaveamento</h2>
+      </div>
+      <!-- bracket.js preenche este elemento -->
+      <div id="bracket-container"
+           class="rounded-2xl border border-[#334155] bg-[#1E293B] p-6 overflow-x-auto">
+      </div>
+    </section>
+
+    <!-- ── PRÓXIMA MODALIDADE (admin) ── -->
+    <section id="section-proxima" class="hidden">
+      <div class="flex justify-end">
+        <button id="btn-proxima-modalidade"
+                onclick="ModalidadePage.iniciarProximaModalidade()"
+                class="btn-secondary hidden flex items-center gap-2 text-sm">
+          ⏭️ Iniciar Próxima Modalidade
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── FOOTER ──────────────────────────────────────────────────────────── -->
+  <footer class="mt-16 border-t border-[#334155] py-6 text-center text-[#94A3B8] text-xs">
+    Mix League &copy; 2026 — Olimpíadas CS2
+  </footer>
+
+  <!-- ─── SCRIPTS ─────────────────────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/sorteio.js"></script>
+  <script src="js/bracket.js"></script>
+  <script src="js/modalidade.js"></script>
+
+  <!-- Inicializa nick no nav e labels de admin -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const user = Auth.getUser();
+      if (user) {
+        const nickEl = document.getElementById('nav-user-nick');
+        if (nickEl) nickEl.textContent = user.nick;
+      }
+
+      if (!Auth.isAdmin()) {
+        const lbl = document.getElementById('label-admin-only');
+        if (lbl) lbl.classList.remove('hidden');
+
+        const secProxima = document.getElementById('section-proxima');
+        if (secProxima) secProxima.classList.remove('hidden');
+      } else {
+        const secProxima = document.getElementById('section-proxima');
+        if (secProxima) secProxima.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

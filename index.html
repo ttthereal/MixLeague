@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mix League — Login</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg:      '#0F172A',
+            surface: '#1E293B',
+            border:  '#334155',
+            primary: '#1E3A5F',
+            gold:    '#F5A623',
+            muted:   '#94A3B8'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Estilos customizados -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: radial-gradient(ellipse at top, #1E3A5F 0%, #0F172A 60%);
+      min-height: 100vh;
+    }
+
+    .btn-gold {
+      background-color: #F5A623;
+      color: #000;
+      font-weight: 700;
+      transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .btn-gold:hover:not(:disabled) {
+      background-color: #e09420;
+      box-shadow: 0 0 16px rgba(245, 166, 35, 0.5);
+      transform: translateY(-1px);
+    }
+    .btn-gold:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .btn-gold:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .input-dark {
+      background-color: #0F172A;
+      border: 1px solid #334155;
+      color: #F8FAFC;
+      border-radius: 0.5rem;
+      padding: 0.625rem 0.875rem;
+      width: 100%;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .input-dark::placeholder { color: #94A3B8; }
+    .input-dark:focus {
+      border-color: #F5A623;
+      box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.2);
+    }
+
+    .btn-spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen px-4">
+
+  <div class="w-full max-w-md fade-in">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-3" aria-hidden="true">🏅</div>
+      <h1 class="text-4xl font-extrabold tracking-tight" style="color:#F5A623;">
+        Mix League
+      </h1>
+      <p class="text-muted mt-1 text-sm tracking-widest uppercase">Olimpíadas CS2</p>
+    </div>
+
+    <!-- Card de Login -->
+    <div class="card shadow-2xl">
+      <h2 class="text-lg font-semibold text-center mb-6" style="color:#F8FAFC;">
+        Entrar no torneio
+      </h2>
+
+      <form id="login-form" novalidate>
+
+        <!-- Nick -->
+        <div class="mb-4">
+          <label for="input-nick" class="block text-sm font-medium mb-1" style="color:#94A3B8;">
+            Escolha seu nick
+          </label>
+          <input
+            id="input-nick"
+            type="text"
+            class="input-dark"
+            placeholder="ex: zekinha, falleN, coldzera..."
+            autocomplete="username"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- Código -->
+        <div class="mb-6">
+          <label for="input-codigo" class="block text-sm font-medium mb-1" style="color:#94A3B8;">
+            Código de acesso
+          </label>
+          <input
+            id="input-codigo"
+            type="password"
+            class="input-dark"
+            placeholder="••••"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <!-- Mensagem de erro -->
+        <div
+          id="login-erro"
+          class="hidden mb-4 px-3 py-2 rounded text-sm font-medium"
+          style="background:rgba(231,76,60,0.15); color:#E74C3C; border:1px solid rgba(231,76,60,0.3);"
+          role="alert"
+          aria-live="polite"
+        ></div>
+
+        <!-- Dica para participantes -->
+        <p class="text-xs mb-4 text-center" style="color:#94A3B8;">
+          💡 Escolha seu nick e use o código fornecido pelo organizador
+        </p>
+
+        <!-- Botão -->
+        <button
+          id="btn-entrar"
+          type="submit"
+          class="btn-gold w-full py-3 rounded-lg text-sm tracking-wide"
+        >
+          Entrar
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Rodapé -->
+    <p class="text-center mt-6 text-xs" style="color:#334155;">
+      Mix League &copy; 2026 — Todos os direitos reservados
+    </p>
+
+  </div>
+
+  <!-- App scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+
+  <script>
+    const form       = document.getElementById('login-form');
+    const btnEntrar  = document.getElementById('btn-entrar');
+    const inputNick  = document.getElementById('input-nick');
+    const inputCod   = document.getElementById('input-codigo');
+    const erroDiv    = document.getElementById('login-erro');
+
+    function setErro(msg) {
+      if (msg) {
+        erroDiv.textContent = msg;
+        erroDiv.classList.remove('hidden');
+      } else {
+        erroDiv.textContent = '';
+        erroDiv.classList.add('hidden');
+      }
+    }
+
+    function setBtnLoading(loading) {
+      if (loading) {
+        btnEntrar.disabled = true;
+        btnEntrar.innerHTML = '<span class="btn-spinner"></span>Entrando...';
+      } else {
+        btnEntrar.disabled = false;
+        btnEntrar.innerHTML = 'Entrar';
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setErro('');
+
+      const nick   = inputNick.value.trim();
+      const codigo = inputCod.value.trim();
+
+      if (!nick) {
+        setErro('Informe seu nick.');
+        inputNick.focus();
+        return;
+      }
+      if (!codigo) {
+        setErro('Informe o código de acesso.');
+        inputCod.focus();
+        return;
+      }
+
+      setBtnLoading(true);
+
+      try {
+        const resultado = await Auth.login(nick, codigo);
+        if (!resultado.success) {
+          setErro(resultado.error || 'Erro ao fazer login.');
+          setBtnLoading(false);
+        }
+        // Se success, Auth.login já redirecionou — não precisa fazer nada
+      } catch (err) {
+        console.error('[Login] Erro inesperado:', err);
+        setErro('Erro inesperado. Tente novamente.');
+        setBtnLoading(false);
+      }
+    });
+
+    // Enter no campo de nick move para senha
+    inputNick.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); inputCod.focus(); }
+    });
+  </script>
+
+</body>
+</html>

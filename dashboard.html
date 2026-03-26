@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Mix League</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg:      '#0F172A',
+            surface: '#1E293B',
+            border:  '#334155',
+            primary: '#1E3A5F',
+            gold:    '#F5A623',
+            muted:   '#94A3B8'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+  <!-- Estilos customizados -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: radial-gradient(ellipse at top, #1a2f50 0%, #0F172A 65%);
+      min-height: 100vh;
+    }
+
+    /* Linha de 1º lugar com destaque dourado */
+    .rank-first {
+      background: linear-gradient(90deg, rgba(245,166,35,0.13) 0%, rgba(245,166,35,0.04) 100%);
+      border-left: 3px solid #F5A623;
+    }
+
+    /* Hover nas linhas da tabela */
+    .rank-row {
+      transition: background 0.18s ease;
+      cursor: pointer;
+    }
+    .rank-row:hover {
+      background: rgba(255,255,255,0.04);
+    }
+
+    /* Badge de status do torneio */
+    .badge-aguardando   { background: rgba(148,163,184,0.15); color: #94A3B8; border: 1px solid #334155; }
+    .badge-votacao      { background: rgba(168,85,247,0.15);  color: #C084FC; border: 1px solid rgba(168,85,247,0.4); }
+    .badge-draft        { background: rgba(245,166,35,0.15);  color: #F5A623; border: 1px solid rgba(245,166,35,0.4); }
+    .badge-em_andamento { background: rgba(39,174,96,0.15);   color: #27AE60; border: 1px solid rgba(39,174,96,0.4); }
+    .badge-finalizado   { background: rgba(59,130,246,0.15);  color: #60A5FA; border: 1px solid rgba(59,130,246,0.4); }
+
+    /* ── Votação ── */
+    .tier-vote-btn {
+      width: 42px; height: 42px; border-radius: 10px; font-weight: 800; font-size: 13px;
+      border: 2px solid #334155; background: #0F172A; color: #94A3B8;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .tier-vote-btn:hover { border-color: #F5A623; color: #F5A623; }
+    .tier-vote-btn.selected { border-color: #F5A623; background: rgba(245,166,35,0.18); color: #F5A623; transform: scale(1.08); }
+    .tier-vote-btn.t1.selected { border-color: #F5A623; background: rgba(245,166,35,0.2); color: #F5A623; }
+    .tier-vote-btn.t2.selected { border-color: #94A3B8; background: rgba(148,163,184,0.2); color: #94A3B8; }
+    .tier-vote-btn.t3.selected { border-color: #CD7F32; background: rgba(205,127,50,0.2); color: #CD7F32; }
+    .tier-vote-btn.t4.selected { border-color: #27AE60; background: rgba(39,174,96,0.2); color: #27AE60; }
+    .tier-vote-btn.t5.selected { border-color: #3B82F6; background: rgba(59,130,246,0.2); color: #3B82F6; }
+    @keyframes votacaoGlow {
+      0%,100% { box-shadow: 0 0 0 0 rgba(168,85,247,0.3); }
+      50%      { box-shadow: 0 0 20px 4px rgba(168,85,247,0.15); }
+    }
+    .votacao-card { animation: votacaoGlow 3s infinite; }
+
+    /* Animação fade-in nas linhas da tabela */
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .row-anim {
+      animation: rowIn 0.3s ease forwards;
+      opacity: 0;
+    }
+
+    /* Tier badges inline */
+    .tier-1 { background-color: #F5A623; color: #0F172A; }
+    .tier-2 { background-color: #94A3B8; color: #0F172A; }
+    .tier-3 { background-color: #CD7F32; color: #F8FAFC; }
+    .tier-4 { background-color: #27AE60; color: #F8FAFC; }
+    .tier-5 { background-color: #3B82F6; color: #F8FAFC; }
+
+    /* Medalha de posição na tabela */
+    .pos-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .pos-1 { background: #F5A623; color: #0F172A; }
+    .pos-2 { background: #94A3B8; color: #0F172A; }
+    .pos-3 { background: #CD7F32; color: #F8FAFC; }
+    .pos-n { background: #1E293B; color: #94A3B8; border: 1px solid #334155; }
+
+    /* Separador decorativo */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #334155 30%, #334155 70%, transparent);
+      margin: 0.25rem 0;
+    }
+
+    /* Card de modalidade em andamento */
+    .modality-glow {
+      box-shadow: 0 0 24px rgba(245,166,35,0.12), 0 0 0 1px rgba(245,166,35,0.2);
+    }
+
+    /* Tabela scroll em mobile */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Botão padrão do projeto */
+    .btn-ghost {
+      border: 1px solid #334155;
+      color: #94A3B8;
+      background: transparent;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { border-color: #F5A623; color: #F5A623; }
+  </style>
+</head>
+<body class="text-[#F8FAFC] font-['Inter'] min-h-screen">
+
+  <!-- ─── NAV ────────────────────────────────────────────────────────────────── -->
+  <nav class="bg-[#1E293B] border-b border-[#334155] px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <a href="dashboard.html" class="text-xl font-bold text-[#F5A623]">🏅 Mix League</a>
+    <div class="flex gap-4 text-sm items-center">
+      <a href="dashboard.html" class="text-[#F5A623] font-semibold">Dashboard</a>
+      <a href="draft.html" class="hover:text-[#F5A623] transition text-[#94A3B8]">Draft</a>
+      <a href="modalidade.html" class="hover:text-[#F5A623] transition text-[#94A3B8]">Modalidades</a>
+      <a href="admin.html" id="nav-admin" class="hover:text-[#F5A623] transition text-[#94A3B8] hidden">Admin</a>
+      <button onclick="Auth.logout()" class="text-red-400 hover:text-red-300 transition text-sm">Sair</button>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ────────────────────────────────────────────────────────────────── -->
+  <section class="max-w-screen-xl mx-auto px-4 pt-10 pb-6">
+    <div class="fade-in text-center md:text-left">
+      <div class="flex flex-col md:flex-row md:items-center md:gap-4 mb-3">
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">
+          🏅 Olimpíadas Mix League
+        </h1>
+        <!-- Badge de status do torneio -->
+        <span id="badge-status"
+          class="inline-block mt-2 md:mt-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest badge-aguardando self-start md:self-auto">
+          Carregando...
+        </span>
+      </div>
+
+      <!-- Modalidade atual em destaque -->
+      <div id="hero-modalidade" class="hidden mt-2">
+        <p class="text-[#94A3B8] text-sm">
+          Modalidade em andamento:
+          <span id="hero-mod-nome" class="text-[#F5A623] font-bold text-base ml-1"></span>
+          <span id="hero-mod-fase" class="text-[#94A3B8] text-xs ml-2"></span>
+        </p>
+      </div>
+
+      <p id="hero-subtitulo" class="text-[#94A3B8] text-sm mt-1">
+        Acompanhe em tempo real o desempenho dos países nas Olimpíadas.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── PAINEL DE VOTAÇÃO (aparece quando status = "votacao") ──────────────── -->
+  <div id="votacao-wrapper" class="hidden max-w-screen-xl mx-auto px-4 pt-6">
+    <div class="votacao-card bg-[#1E293B] border-2 border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl mb-6">
+
+      <!-- Header -->
+      <div class="px-6 py-5 border-b border-[#334155] flex items-center justify-between flex-wrap gap-3"
+           style="background: linear-gradient(135deg, rgba(168,85,247,0.12) 0%, transparent 60%);">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🗳️</span>
+          <div>
+            <h2 class="text-xl font-extrabold text-[#F8FAFC]">Votação de Tiers</h2>
+            <p class="text-xs text-purple-300">Vote no nível técnico de cada jogador (T1 = Elite → T5 = Iniciante)</p>
+          </div>
+        </div>
+        <div id="votacao-contador"
+             class="text-sm font-bold px-4 py-2 rounded-full border border-purple-500/40 text-purple-300 bg-purple-900/20">
+          0 / 0 votaram
+        </div>
+      </div>
+
+      <!-- Estado: aguardando voto -->
+      <div id="votacao-form-wrapper" class="p-6">
+
+        <!-- Aviso: já votou -->
+        <div id="votacao-ja-votou" class="hidden text-center py-10">
+          <div class="text-5xl mb-4">✅</div>
+          <p class="text-xl font-bold text-[#F8FAFC] mb-2">Você já enviou seus votos!</p>
+          <p class="text-[#94A3B8] text-sm">Aguardando os outros jogadores votarem...</p>
+          <div id="votacao-aguardando-lista" class="mt-6 text-sm text-[#94A3B8]"></div>
+        </div>
+
+        <!-- Formulário de votos -->
+        <div id="votacao-form">
+          <p class="text-sm text-[#94A3B8] mb-5">
+            Escolha um tier para <strong class="text-[#F8FAFC]">cada jogador</strong>. Você não vota em si mesmo.
+          </p>
+          <div id="votacao-lista-jogadores" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-6">
+            <div class="col-span-3 text-center py-8 text-[#94A3B8]">Carregando jogadores...</div>
+          </div>
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <p id="votacao-aviso" class="text-xs text-[#94A3B8]"></p>
+            <button id="btn-enviar-votos"
+                    onclick="VotacaoPage.enviarVotos()"
+                    class="px-8 py-3 rounded-xl font-bold text-sm transition"
+                    style="background:#A855F7;color:#fff;"
+                    onmouseover="this.style.background='#9333ea'"
+                    onmouseout="this.style.background='#A855F7'">
+              Enviar Votos →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CONTEÚDO PRINCIPAL ──────────────────────────────────────────────────── -->
+  <main class="max-w-screen-xl mx-auto px-4 pb-16">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- ── COLUNA PRINCIPAL: QUADRO DE MEDALHAS ──────────────────────────────── -->
+      <div class="lg:col-span-2">
+        <div class="bg-[#1E293B] border border-[#334155] rounded-2xl overflow-hidden shadow-xl">
+
+          <!-- Cabeçalho do quadro -->
+          <div class="px-5 py-4 flex items-center justify-between border-b border-[#334155]">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🏆</span>
+              <div>
+                <h2 class="text-lg font-bold text-[#F8FAFC]">Quadro de Medalhas</h2>
+                <p class="text-xs text-[#94A3B8]">Atualizado em tempo real</p>
+              </div>
+            </div>
+            <!-- Indicador live -->
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#27AE60] animate-pulse inline-block"></span>
+              <span class="text-xs text-[#94A3B8] font-medium">AO VIVO</span>
+            </div>
+          </div>
+
+          <!-- Tabela -->
+          <div class="table-scroll">
+            <table class="w-full text-sm" id="tabela-medalhas">
+              <thead>
+                <tr class="text-[#94A3B8] text-xs uppercase tracking-wide border-b border-[#334155]">
+                  <th class="py-3 px-4 text-center w-12">Pos</th>
+                  <th class="py-3 px-3 text-center w-10">🏳️</th>
+                  <th class="py-3 px-4 text-left">País</th>
+                  <th class="py-3 px-3 text-center">🥇</th>
+                  <th class="py-3 px-3 text-center">🥈</th>
+                  <th class="py-3 px-3 text-center">🥉</th>
+                  <th class="py-3 px-4 text-right">Pts</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-medalhas">
+                <!-- Linhas geradas por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Estado vazio / loading -->
+          <div id="quadro-empty" class="hidden flex flex-col items-center justify-center py-14 text-center px-6">
+            <div class="text-5xl mb-4">🎯</div>
+            <h3 class="text-lg font-bold text-[#F8FAFC] mb-1">Nenhuma medalha ainda.</h3>
+            <p class="text-[#94A3B8] text-sm">O torneio vai começar em breve!</p>
+          </div>
+
+          <div id="quadro-loading" class="flex flex-col items-center justify-center py-10 text-center">
+            <div class="spinner mb-3"></div>
+            <p class="text-[#94A3B8] text-sm">Carregando quadro de medalhas...</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── COLUNA LATERAL: STATUS + HISTÓRICO ───────────────────────────────── -->
+      <div class="flex flex-col gap-5">
+
+        <!-- Card: Estado do Torneio -->
+        <div id="card-torneio" class="bg-[#1E293B] border border-[#334155] rounded-2xl p-5 shadow-lg">
+          <h3 class="text-sm font-bold text-[#94A3B8] uppercase tracking-widest mb-4">Estado do Torneio</h3>
+
+          <!-- Aguardando -->
+          <div id="torneio-aguardando">
+            <div class="text-center py-4">
+              <div class="text-4xl mb-3">⏳</div>
+              <p class="font-bold text-[#F8FAFC] mb-1">Torneio aguardando</p>
+              <p class="text-[#94A3B8] text-xs leading-relaxed">
+                O torneio ainda não começou. Prepare-se, capitão! Que o melhor time vença!
+              </p>
+            </div>
+          </div>
+
+          <!-- Draft -->
+          <div id="torneio-draft" class="hidden">
+            <div class="text-center py-4">
+              <div class="text-4xl mb-3">🎲</div>
+              <p class="font-bold text-[#F5A623] mb-1">Draft em andamento</p>
+              <p class="text-[#94A3B8] text-xs leading-relaxed">
+                Os capitães estão montando seus times. Em breve as batalhas começam!
+              </p>
+              <a href="draft.html"
+                class="mt-3 inline-block text-xs font-bold text-[#F5A623] border border-[#F5A623] px-4 py-1.5 rounded-full hover:bg-[#F5A623] hover:text-[#0F172A] transition">
+                Ver Draft →
+              </a>
+            </div>
+          </div>
+
+          <!-- Em andamento -->
+          <div id="torneio-em_andamento" class="hidden modality-glow rounded-xl p-4 border border-[#334155]">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="text-3xl">⚔️</div>
+              <div>
+                <p class="text-xs text-[#94A3B8] uppercase tracking-widest font-bold">Modalidade Atual</p>
+                <p id="torneio-mod-nome" class="text-base font-extrabold text-[#F5A623]">—</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-[#94A3B8]">Fase</span>
+              <span id="torneio-fase" class="font-bold text-[#F8FAFC] bg-[#0F172A] px-2 py-0.5 rounded">—</span>
+            </div>
+            <div id="torneio-times-wrap" class="mt-3 hidden">
+              <p class="text-[#94A3B8] text-xs mb-2">Participantes:</p>
+              <div id="torneio-times" class="flex flex-wrap gap-1.5"></div>
+            </div>
+            <a href="modalidade.html"
+              class="mt-4 inline-block w-full text-center text-xs font-bold text-[#27AE60] border border-[#27AE60] px-4 py-2 rounded-lg hover:bg-[#27AE60] hover:text-[#0F172A] transition">
+              Acompanhar ao vivo →
+            </a>
+          </div>
+
+          <!-- Finalizado -->
+          <div id="torneio-finalizado" class="hidden">
+            <div class="text-center py-4">
+              <div class="text-4xl mb-3">🏆</div>
+              <p class="font-bold text-[#60A5FA] mb-1">Olimpíadas Encerradas!</p>
+              <p class="text-[#94A3B8] text-xs leading-relaxed">
+                Todas as modalidades foram disputadas. Confira o resultado final no quadro de medalhas.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Card: Histórico de Modalidades -->
+        <div class="bg-[#1E293B] border border-[#334155] rounded-2xl p-5 shadow-lg">
+          <h3 class="text-sm font-bold text-[#94A3B8] uppercase tracking-widest mb-4">Resultados por Modalidade</h3>
+
+          <div id="historico-modalidades">
+            <div id="historico-loading" class="text-center py-4">
+              <div class="spinner mx-auto mb-2" style="width:24px;height:24px;border-width:3px;"></div>
+            </div>
+            <div id="historico-empty" class="hidden text-center py-4">
+              <p class="text-[#94A3B8] text-sm">Nenhuma modalidade concluída ainda.</p>
+            </div>
+            <div id="historico-lista" class="hidden flex flex-col gap-3"></div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /coluna lateral -->
+
+    </div>
+  </main>
+
+  <!-- ─── SCRIPTS ─────────────────────────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/medalhas.js"></script>
+
+  <script>
+    // ─── Dashboard Page ────────────────────────────────────────────────────────
+    const DashboardPage = {
+      listeners: [],
+      _paises:   [],
+      _medalhas: [],
+      _torneio:  null,
+
+      async init() {
+        // Carrega dados iniciais em paralelo
+        try {
+          const [paises, medalhas, torneio] = await Promise.all([
+            DB.getPaises(),
+            DB.getMedalhas(),
+            DB.getTorneio()
+          ]);
+
+          this._paises   = paises   || [];
+          this._medalhas = medalhas || [];
+          this._torneio  = torneio  || null;
+
+          this.renderizarQuadro();
+          this.renderizarTorneioAtual(this._torneio);
+          this.renderizarHistorico();
+          this._gerenciarVotacao(this._torneio);
+        } catch (err) {
+          console.error('[Dashboard] Erro ao carregar dados:', err);
+        }
+
+        // ── Listener: medalhas (tempo real) ──────────────────────────────────
+        const lMedalhas = DB.onMedalhasChange(medalhas => {
+          this._medalhas = medalhas || [];
+          this.renderizarQuadro();
+          this.renderizarHistorico();
+        });
+        this.listeners.push(lMedalhas);
+
+        // ── Listener: países ─────────────────────────────────────────────────
+        const lPaises = DB.onPaisesChange(paises => {
+          this._paises = paises || [];
+          this.renderizarQuadro();
+          this.renderizarHistorico();
+        });
+        this.listeners.push(lPaises);
+
+        // ── Listener: torneio ─────────────────────────────────────────────────
+        const lTorneio = DB.onTorneioChange(torneio => {
+          this._torneio = torneio || null;
+          this.renderizarTorneioAtual(this._torneio);
+          this._gerenciarVotacao(this._torneio);
+        });
+        this.listeners.push(lTorneio);
+      },
+
+      // ── Renderiza tabela de medalhas ──────────────────────────────────────────
+      renderizarQuadro() {
+        const loading = document.getElementById('quadro-loading');
+        const empty   = document.getElementById('quadro-empty');
+        const tbody   = document.getElementById('tbody-medalhas');
+        const tabela  = document.getElementById('tabela-medalhas');
+
+        if (loading) loading.classList.add('hidden');
+
+        const ranking = Medalhas.calcularRanking(this._medalhas, this._paises);
+
+        // Filtra apenas países que têm algum ponto ou medalha
+        const ativos = ranking.filter(r => r.total > 0 || r.ouro > 0 || r.prata > 0 || r.bronze > 0);
+
+        if (ativos.length === 0) {
+          tbody.innerHTML = '';
+          if (empty)  empty.classList.remove('hidden');
+          if (tabela) tabela.classList.add('hidden');
+          return;
+        }
+
+        if (empty)  empty.classList.add('hidden');
+        if (tabela) tabela.classList.remove('hidden');
+
+        tbody.innerHTML = '';
+
+        ativos.forEach((item, idx) => {
+          const pos  = idx + 1;
+          const tr   = document.createElement('tr');
+          const delay = Math.min(idx * 60, 600);
+
+          // Classes da linha
+          tr.className = [
+            'rank-row',
+            'row-anim',
+            'border-b border-[#334155] last:border-0',
+            pos === 1 ? 'rank-first' : ''
+          ].join(' ');
+          tr.style.animationDelay = delay + 'ms';
+
+          // Clique → abre página do país
+          tr.addEventListener('click', () => {
+            window.location.href = 'pais.html?id=' + encodeURIComponent(item.paisId);
+          });
+
+          // Badge de posição
+          let badgeClass = 'pos-n';
+          if (pos === 1) badgeClass = 'pos-1 pulse-gold';
+          else if (pos === 2) badgeClass = 'pos-2';
+          else if (pos === 3) badgeClass = 'pos-3';
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 text-center">
+              <span class="pos-badge ${badgeClass}">${pos}</span>
+            </td>
+            <td class="py-3 px-3 text-center text-2xl leading-none">
+              ${item.bandeira || '🏳️'}
+            </td>
+            <td class="py-3 px-4 font-semibold text-[#F8FAFC]">
+              ${escapeHtml(item.nome)}
+            </td>
+            <td class="py-3 px-3 text-center font-bold text-[#F5A623]">
+              ${item.ouro > 0 ? item.ouro : '<span class="text-[#334155]">—</span>'}
+            </td>
+            <td class="py-3 px-3 text-center font-bold text-[#94A3B8]">
+              ${item.prata > 0 ? item.prata : '<span class="text-[#334155]">—</span>'}
+            </td>
+            <td class="py-3 px-3 text-center font-bold text-[#CD7F32]">
+              ${item.bronze > 0 ? item.bronze : '<span class="text-[#334155]">—</span>'}
+            </td>
+            <td class="py-3 px-4 text-right font-extrabold text-[#F5A623]">
+              ${item.total}
+            </td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+      },
+
+      // ── Renderiza estado atual do torneio ────────────────────────────────────
+      renderizarTorneioAtual(torneio) {
+        const badge = document.getElementById('badge-status');
+        const heroMod = document.getElementById('hero-modalidade');
+        const heroModNome = document.getElementById('hero-mod-nome');
+        const heroModFase = document.getElementById('hero-mod-fase');
+
+        // Seções laterais
+        const secoes = {
+          aguardando:   document.getElementById('torneio-aguardando'),
+          votacao:      document.getElementById('torneio-aguardando'), // reutiliza aguardando
+          draft:        document.getElementById('torneio-draft'),
+          em_andamento: document.getElementById('torneio-em_andamento'),
+          finalizado:   document.getElementById('torneio-finalizado')
+        };
+
+        // Esconde todas as seções
+        Object.values(secoes).forEach(s => { if (s) s.classList.add('hidden'); });
+
+        const status = (torneio && torneio.status) ? torneio.status : 'aguardando';
+
+        // Atualiza badge de status
+        if (badge) {
+          const labels = {
+            aguardando:   'Aguardando',
+            votacao:      '🗳️ Votação',
+            draft:        'Draft',
+            em_andamento: 'Em Andamento',
+            finalizado:   'Finalizado'
+          };
+          badge.textContent = labels[status] || status;
+          badge.className = 'inline-block mt-2 md:mt-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest self-start md:self-auto badge-' + status;
+        }
+
+        // Mostra a seção correta
+        const secaoAtiva = secoes[status] || secoes['aguardando'];
+        if (secaoAtiva) secaoAtiva.classList.remove('hidden');
+
+        // Hero: modalidade em destaque
+        if (status === 'em_andamento' && torneio && torneio.modalidadeAtual) {
+          if (heroMod) heroMod.classList.remove('hidden');
+          if (heroModNome) heroModNome.textContent = Medalhas.nomeModalidade(torneio.modalidadeAtual);
+          if (heroModFase && torneio.fase) heroModFase.textContent = '— ' + torneio.fase;
+
+          // Popula card da modalidade
+          const modNome = document.getElementById('torneio-mod-nome');
+          const modFase = document.getElementById('torneio-fase');
+          if (modNome) modNome.textContent = Medalhas.nomeModalidade(torneio.modalidadeAtual);
+          if (modFase) modFase.textContent = torneio.fase || '—';
+
+          // Times participantes (se tier sorteados)
+          if (torneio.tiersSorteados && this._paises.length > 0) {
+            const wrap  = document.getElementById('torneio-times-wrap');
+            const times = document.getElementById('torneio-times');
+            if (wrap && times) {
+              wrap.classList.remove('hidden');
+              times.innerHTML = this._paises
+                .map(p => `<span class="text-xs bg-[#0F172A] border border-[#334155] px-2 py-0.5 rounded-full">
+                  ${p.bandeira || '🏳️'} ${escapeHtml(p.nome)}
+                </span>`)
+                .join('');
+            }
+          }
+        } else {
+          if (heroMod) heroMod.classList.add('hidden');
+        }
+      },
+
+      // ── Renderiza histórico de modalidades ───────────────────────────────────
+      renderizarHistorico() {
+        const loadingEl = document.getElementById('historico-loading');
+        const emptyEl   = document.getElementById('historico-empty');
+        const listaEl   = document.getElementById('historico-lista');
+
+        if (!loadingEl || !emptyEl || !listaEl) return;
+
+        if (loadingEl) loadingEl.classList.add('hidden');
+
+        if (this._medalhas.length === 0) {
+          emptyEl.classList.remove('hidden');
+          listaEl.classList.add('hidden');
+          return;
+        }
+
+        // Agrupa medalhas por modalidade
+        const porMod = {};
+        this._medalhas.forEach(m => {
+          if (!porMod[m.modalidade]) porMod[m.modalidade] = [];
+          porMod[m.modalidade].push(m);
+        });
+
+        const modalidades = Object.keys(porMod);
+        if (modalidades.length === 0) {
+          emptyEl.classList.remove('hidden');
+          listaEl.classList.add('hidden');
+          return;
+        }
+
+        emptyEl.classList.add('hidden');
+        listaEl.classList.remove('hidden');
+        listaEl.innerHTML = '';
+
+        modalidades.forEach(mod => {
+          const medalhasMod = porMod[mod];
+          // Ordena por posição
+          const ordenadas = medalhasMod.slice().sort((a, b) => a.posicao - b.posicao);
+
+          const bloco = document.createElement('div');
+          bloco.className = 'bg-[#0F172A] border border-[#334155] rounded-xl p-3';
+
+          const titulo = document.createElement('p');
+          titulo.className = 'text-xs font-bold text-[#94A3B8] uppercase tracking-widest mb-2';
+          titulo.textContent = Medalhas.nomeModalidade(mod);
+          bloco.appendChild(titulo);
+
+          ordenadas.forEach(m => {
+            const pais = this._paises.find(p => p.id === m.paisId);
+            const nomePais = pais ? pais.nome : m.paisId;
+            const bandeira = pais ? (pais.bandeira || '🏳️') : '🏳️';
+
+            const linha = document.createElement('div');
+            linha.className = 'flex items-center gap-2 py-1';
+            linha.innerHTML = `
+              <span class="text-base">${Medalhas.icone(m.posicao)}</span>
+              <span class="text-base">${bandeira}</span>
+              <span class="text-sm font-semibold text-[#F8FAFC] flex-1">${escapeHtml(nomePais)}</span>
+              <span class="text-xs font-bold text-[#F5A623]">${m.pontos || 0} pts</span>
+            `;
+            bloco.appendChild(linha);
+          });
+
+          listaEl.appendChild(bloco);
+        });
+      },
+
+      // Exibe ou esconde o painel de votação
+      async _gerenciarVotacao(torneio) {
+        const wrapper = document.getElementById('votacao-wrapper');
+        if (!wrapper) return;
+        if (torneio && torneio.status === 'votacao') {
+          wrapper.classList.remove('hidden');
+          if (!this._jogadores || !this._jogadores.length) {
+            this._jogadores = await DB.getJogadores();
+          }
+          VotacaoPage.jogadores = this._jogadores || this._paises || [];
+          // Re-init só se o form estiver visível (não se já votou)
+          const form = document.getElementById('votacao-form');
+          const jaVotou = document.getElementById('votacao-ja-votou');
+          if (form && !form.classList.contains('hidden')) {
+            await VotacaoPage.init(this._jogadores);
+          } else if (jaVotou && jaVotou.classList.contains('hidden')) {
+            await VotacaoPage.init(this._jogadores);
+          }
+        } else {
+          wrapper.classList.add('hidden');
+        }
+      },
+
+      destruir() {
+        this.listeners.forEach(l => { if (l && l.off) l.off(); });
+        this.listeners = [];
+      }
+    };
+
+    // ─── Helper: escapa HTML ──────────────────────────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ─── VotacaoPage ──────────────────────────────────────────────────────────
+    const VotacaoPage = {
+      jogadores: [],
+      votos: {},        // { jogadorId: tier } — seleções do usuário atual
+      _listener: null,
+      _jogadoresListener: null,
+
+      async init(jogadores) {
+        this.jogadores = jogadores || [];
+        const user = Auth.getUser();
+        const votacao = await DB.getVotacao();
+
+        // Verifica se já votou
+        if (votacao && votacao.participantes) {
+          const nickKey = (user.nick || '').replace(/[.#$[\]]/g, '_');
+          if (votacao.participantes[nickKey]) {
+            this._mostrarJaVotou(votacao);
+            return;
+          }
+        }
+
+        this._renderizarForm(this.jogadores, user);
+        this._atualizarContador(votacao);
+
+        // Listener tempo real da votação
+        if (this._listener) this._listener.off();
+        this._listener = DB.onVotacaoChange(v => {
+          this._atualizarContador(v);
+          // Se foi votado por este user em outra aba, mostrar já votou
+          if (v && v.participantes) {
+            const nickKey = (user.nick || '').replace(/[.#$[\]]/g, '_');
+            if (v.participantes[nickKey]) this._mostrarJaVotou(v);
+          }
+        });
+      },
+
+      _renderizarForm(jogadores, user) {
+        const lista = document.getElementById('votacao-lista-jogadores');
+        if (!lista) return;
+
+        const meuNick = (user && user.nick) ? user.nick.toLowerCase() : '';
+        const outros = jogadores.filter(j => j.nick.toLowerCase() !== meuNick && j.nick !== 'admin');
+
+        if (!outros.length) {
+          lista.innerHTML = '<div class="col-span-3 text-center text-[#94A3B8] py-6">Nenhum jogador para votar.</div>';
+          return;
+        }
+
+        lista.innerHTML = outros.map(j => {
+          const tierAtual = j.tier ? `<span class="text-xs text-[#94A3B8] ml-1">atual: T${j.tier}</span>` : '';
+          return `
+            <div class="bg-[#0F172A] border border-[#334155] rounded-xl p-4" data-jogador-id="${j.id}">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="font-bold text-[#F8FAFC]">${escapeHtml(j.nick)}</span>
+                ${tierAtual}
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                ${[1,2,3,4,5].map(t => `
+                  <button class="tier-vote-btn t${t}" data-jogid="${j.id}" data-tier="${t}"
+                    onclick="VotacaoPage._votar('${j.id}', ${t}, this)"
+                    title="T${t} — ${['','Elite','Pro','Semi-Pro','Amateur','Iniciante'][t]}">
+                    T${t}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      _votar(jogadorId, tier, btn) {
+        // Desmarca botões do mesmo jogador
+        const card = btn.closest('[data-jogador-id]');
+        card.querySelectorAll('.tier-vote-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        this.votos[jogadorId] = tier;
+      },
+
+      async enviarVotos() {
+        const user = Auth.getUser();
+        if (!user) return;
+
+        const lista = document.getElementById('votacao-lista-jogadores');
+        const todos = lista ? lista.querySelectorAll('[data-jogador-id]') : [];
+        const faltando = [];
+        todos.forEach(card => {
+          const jid = card.dataset.jogadorId;
+          if (!this.votos[jid]) faltando.push(jid);
+        });
+
+        const aviso = document.getElementById('votacao-aviso');
+        if (faltando.length > 0) {
+          if (aviso) aviso.textContent = `⚠️ Vote em todos os jogadores antes de enviar (${faltando.length} faltando).`;
+          if (aviso) aviso.style.color = '#E74C3C';
+          return;
+        }
+        if (aviso) aviso.textContent = '';
+
+        const btn = document.getElementById('btn-enviar-votos');
+        if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+        try {
+          await DB.salvarVotosJogador(user.nick, this.votos);
+          const votacao = await DB.getVotacao();
+          this._mostrarJaVotou(votacao);
+          if (typeof showToast === 'function') showToast('Votos enviados com sucesso! 🗳️', 'success');
+        } catch (e) {
+          console.error(e);
+          if (btn) { btn.disabled = false; btn.textContent = 'Enviar Votos →'; }
+          if (aviso) { aviso.textContent = 'Erro ao enviar votos. Tente novamente.'; aviso.style.color = '#E74C3C'; }
+        }
+      },
+
+      _mostrarJaVotou(votacao) {
+        const form    = document.getElementById('votacao-form');
+        const jaVotou = document.getElementById('votacao-ja-votou');
+        if (form)    form.classList.add('hidden');
+        if (jaVotou) jaVotou.classList.remove('hidden');
+        this._atualizarContador(votacao);
+        this._renderizarAguardando(votacao);
+      },
+
+      _renderizarAguardando(votacao) {
+        const el = document.getElementById('votacao-aguardando-lista');
+        if (!el || !votacao) return;
+        const participantes = votacao.participantes ? Object.keys(votacao.participantes) : [];
+        const total = this.jogadores.filter(j => j.nick !== 'admin').length;
+        const faltam = total - participantes.length;
+        el.innerHTML = faltam > 0
+          ? `<p>Faltam <strong class="text-[#F8FAFC]">${faltam}</strong> jogador${faltam !== 1 ? 'es' : ''} votar.</p>`
+          : '<p class="text-[#27AE60] font-bold">Todos votaram! Aguardando o admin encerrar a votação.</p>';
+      },
+
+      _atualizarContador(votacao) {
+        const el = document.getElementById('votacao-contador');
+        if (!el) return;
+        const total = this.jogadores.filter(j => j.nick !== 'admin').length;
+        const votaram = votacao && votacao.participantes ? Object.keys(votacao.participantes).length : 0;
+        el.textContent = `${votaram} / ${total} votaram`;
+      },
+
+      destruir() {
+        if (this._listener) { this._listener.off(); this._listener = null; }
+      }
+    };
+
+    // ─── Boot ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => DashboardPage.init());
+    window.addEventListener('beforeunload', () => {
+      DashboardPage.destruir();
+      VotacaoPage.destruir();
+    });
+  </script>
+
+</body>
+</html>

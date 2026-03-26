@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>País — Mix League</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg:      '#0F172A',
+            surface: '#1E293B',
+            border:  '#334155',
+            primary: '#1E3A5F',
+            gold:    '#F5A623',
+            muted:   '#94A3B8'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+  <!-- Estilos customizados -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: radial-gradient(ellipse at top, #1a2f50 0%, #0F172A 65%);
+      min-height: 100vh;
+    }
+
+    /* Tier badges */
+    .tier-1 { background-color: #F5A623; color: #0F172A; }
+    .tier-2 { background-color: #94A3B8; color: #0F172A; }
+    .tier-3 { background-color: #CD7F32; color: #F8FAFC; }
+    .tier-4 { background-color: #27AE60; color: #F8FAFC; }
+    .tier-5 { background-color: #3B82F6; color: #F8FAFC; }
+
+    /* Barra de medalhas */
+    .medal-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .medal-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .medal-count {
+      font-size: 1.75rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .medal-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94A3B8;
+      font-weight: 600;
+    }
+
+    /* Card de jogador */
+    .player-card {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 0.875rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      transition: border-color 0.2s, background 0.18s;
+    }
+    .player-card:hover {
+      border-color: #F5A623;
+      background: #111f35;
+    }
+
+    /* Tabela histórico */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Posição na tabela */
+    .pos-medal-1 { color: #F5A623; }
+    .pos-medal-2 { color: #94A3B8; }
+    .pos-medal-3 { color: #CD7F32; }
+    .pos-other   { color: #94A3B8; }
+
+    /* Seção de pontuação total em destaque */
+    .total-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      background: rgba(245,166,35,0.12);
+      border: 1px solid rgba(245,166,35,0.35);
+      color: #F5A623;
+      font-weight: 800;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+    }
+
+    /* Estado de erro / não encontrado */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    /* Separador decorativo */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #334155 30%, #334155 70%, transparent);
+      margin: 1.5rem 0;
+    }
+
+    /* Glowing hero do país */
+    .pais-hero-bg {
+      background: linear-gradient(135deg, #1E293B 0%, #1a2f50 100%);
+      border: 1px solid #334155;
+      border-radius: 1.25rem;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .pais-hero-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(245,166,35,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="text-[#F8FAFC] font-['Inter'] min-h-screen">
+
+  <!-- ─── NAV ─────────────────────────────────────────────────────────────────── -->
+  <nav class="bg-[#1E293B] border-b border-[#334155] px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+    <a href="dashboard.html" class="text-xl font-bold text-[#F5A623]">🏅 Mix League</a>
+    <div class="flex gap-4 text-sm items-center">
+      <a href="dashboard.html" class="hover:text-[#F5A623] transition text-[#94A3B8]">Dashboard</a>
+      <a href="draft.html" class="hover:text-[#F5A623] transition text-[#94A3B8]">Draft</a>
+      <a href="modalidade.html" class="hover:text-[#F5A623] transition text-[#94A3B8]">Modalidades</a>
+      <a href="admin.html" id="nav-admin" class="hover:text-[#F5A623] transition text-[#94A3B8] hidden">Admin</a>
+      <button onclick="Auth.logout()" class="text-red-400 hover:text-red-300 transition text-sm">Sair</button>
+    </div>
+  </nav>
+
+  <!-- ─── LOADING ───────────────────────────────────────────────────────────────── -->
+  <div id="page-loading" class="flex flex-col items-center justify-center min-h-[60vh] text-center">
+    <div class="spinner mb-4"></div>
+    <p class="text-[#94A3B8] text-sm">Carregando dados do país...</p>
+  </div>
+
+  <!-- ─── ERRO / NÃO ENCONTRADO ─────────────────────────────────────────────────── -->
+  <div id="page-error" class="hidden error-state">
+    <div class="text-6xl mb-4">🚫</div>
+    <h2 class="text-2xl font-bold text-[#F8FAFC] mb-2">País não encontrado</h2>
+    <p class="text-[#94A3B8] mb-6 text-sm">Esse país não existe ou não está cadastrado no torneio.</p>
+    <a href="dashboard.html"
+      class="inline-block bg-[#F5A623] text-[#0F172A] font-bold px-5 py-2.5 rounded-lg hover:bg-yellow-400 transition text-sm">
+      ← Voltar ao Dashboard
+    </a>
+  </div>
+
+  <!-- ─── CONTEÚDO DO PAÍS ─────────────────────────────────────────────────────── -->
+  <main id="page-content" class="hidden max-w-screen-lg mx-auto px-4 py-8 pb-16">
+
+    <!-- Botão voltar -->
+    <div class="mb-6">
+      <a href="dashboard.html"
+        class="inline-flex items-center gap-2 text-sm text-[#94A3B8] hover:text-[#F5A623] transition border border-[#334155] hover:border-[#F5A623] px-4 py-2 rounded-lg">
+        ← Voltar ao Dashboard
+      </a>
+    </div>
+
+    <!-- ── HERO DO PAÍS ─────────────────────────────────────────────────────── -->
+    <div class="pais-hero-bg mb-8 fade-in">
+      <div class="flex flex-col md:flex-row md:items-center gap-6">
+
+        <!-- Bandeira + Nome -->
+        <div class="flex items-center gap-5">
+          <span id="pais-bandeira" class="text-[5rem] leading-none select-none" style="font-size:5rem;">🏳️</span>
+          <div>
+            <h1 id="pais-nome" class="text-3xl md:text-4xl font-extrabold text-[#F8FAFC]">—</h1>
+            <div class="mt-2">
+              <span class="total-badge">
+                <span>🏆</span>
+                <span id="pais-total-pts">0</span>
+                <span class="text-xs font-medium opacity-80">pontos</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de medalhas -->
+        <div class="md:ml-auto">
+          <div class="medal-bar">
+            <div class="medal-block">
+              <span class="text-2xl">🥇</span>
+              <span id="pais-ouro" class="medal-count text-[#F5A623]">0</span>
+              <span class="medal-label">Ouro</span>
+            </div>
+            <div class="w-px h-10 bg-[#334155]"></div>
+            <div class="medal-block">
+              <span class="text-2xl">🥈</span>
+              <span id="pais-prata" class="medal-count text-[#94A3B8]">0</span>
+              <span class="medal-label">Prata</span>
+            </div>
+            <div class="w-px h-10 bg-[#334155]"></div>
+            <div class="medal-block">
+              <span class="text-2xl">🥉</span>
+              <span id="pais-bronze" class="medal-count text-[#CD7F32]">0</span>
+              <span class="medal-label">Bronze</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── GRID: JOGADORES + HISTÓRICO ────────────────────────────────────── -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Jogadores do Time -->
+      <div class="bg-[#1E293B] border border-[#334155] rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-[#334155] flex items-center gap-3">
+          <span class="text-xl">👥</span>
+          <div>
+            <h2 class="font-bold text-[#F8FAFC]">Jogadores do Time</h2>
+            <p class="text-xs text-[#94A3B8]">Elenco atual</p>
+          </div>
+        </div>
+        <div class="p-4">
+          <div id="jogadores-grid" class="flex flex-col gap-2">
+            <p class="text-[#94A3B8] text-sm text-center py-6">Carregando jogadores...</p>
+          </div>
+          <div id="jogadores-empty" class="hidden text-center py-6">
+            <p class="text-[#94A3B8] text-sm">Nenhum jogador neste país ainda.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico por Modalidade -->
+      <div class="bg-[#1E293B] border border-[#334155] rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-[#334155] flex items-center gap-3">
+          <span class="text-xl">📋</span>
+          <div>
+            <h2 class="font-bold text-[#F8FAFC]">Histórico por Modalidade</h2>
+            <p class="text-xs text-[#94A3B8]">Resultados conquistados</p>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="w-full text-sm" id="tabela-historico">
+            <thead>
+              <tr class="text-[#94A3B8] text-xs uppercase tracking-wide border-b border-[#334155]">
+                <th class="py-3 px-4 text-left">Modalidade</th>
+                <th class="py-3 px-3 text-center">Pos</th>
+                <th class="py-3 px-3 text-center">Medalha</th>
+                <th class="py-3 px-4 text-right">Pontos</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-historico">
+              <!-- Gerado por JS -->
+            </tbody>
+          </table>
+        </div>
+        <div id="historico-empty" class="hidden text-center py-8 px-4">
+          <div class="text-3xl mb-2">🎯</div>
+          <p class="text-[#94A3B8] text-sm">Nenhuma medalha conquistada ainda.</p>
+          <p class="text-[#94A3B8] text-xs mt-1">Participe das modalidades para acumular pontos!</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Botão voltar inferior -->
+    <div class="mt-10 text-center">
+      <a href="dashboard.html"
+        class="inline-flex items-center gap-2 text-sm text-[#94A3B8] hover:text-[#F5A623] transition border border-[#334155] hover:border-[#F5A623] px-6 py-2.5 rounded-lg">
+        ← Voltar ao Quadro de Medalhas
+      </a>
+    </div>
+
+  </main>
+
+  <!-- ─── SCRIPTS ─────────────────────────────────────────────────────────────── -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/medalhas.js"></script>
+
+  <script>
+    // ─── Helper: escapa HTML ────────────────────────────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ─── Pais Page ──────────────────────────────────────────────────────────────
+    const PaisPage = {
+
+      async init() {
+        const params  = new URLSearchParams(window.location.search);
+        const paisId  = params.get('id');
+
+        if (!paisId) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        try {
+          const [pais, jogadores, medalhas] = await Promise.all([
+            DB.getPais(paisId),
+            DB.getJogadores(),
+            DB.getMedalhas()
+          ]);
+
+          document.getElementById('page-loading').classList.add('hidden');
+
+          if (!pais) {
+            document.getElementById('page-error').classList.remove('hidden');
+            return;
+          }
+
+          document.getElementById('page-content').classList.remove('hidden');
+          this.renderizar(pais, jogadores || [], medalhas || []);
+
+        } catch (err) {
+          console.error('[PaisPage] Erro ao carregar:', err);
+          document.getElementById('page-loading').classList.add('hidden');
+          document.getElementById('page-error').classList.remove('hidden');
+        }
+      },
+
+      renderizar(pais, todosJogadores, todasMedalhas) {
+        // ── Título da aba ──────────────────────────────────────────────────────
+        document.title = (pais.nome || 'País') + ' — Mix League';
+
+        // ── Hero ──────────────────────────────────────────────────────────────
+        const elBandeira = document.getElementById('pais-bandeira');
+        const elNome     = document.getElementById('pais-nome');
+        if (elBandeira) elBandeira.textContent = pais.bandeira || '🏳️';
+        if (elNome)     elNome.textContent     = pais.nome     || '—';
+
+        // ── Pontuação ─────────────────────────────────────────────────────────
+        const pontos = Medalhas.getPontuacaoPais(pais.id, todasMedalhas);
+        const elOuro   = document.getElementById('pais-ouro');
+        const elPrata  = document.getElementById('pais-prata');
+        const elBronze = document.getElementById('pais-bronze');
+        const elTotal  = document.getElementById('pais-total-pts');
+
+        if (elOuro)   elOuro.textContent   = pontos.ouro;
+        if (elPrata)  elPrata.textContent  = pontos.prata;
+        if (elBronze) elBronze.textContent = pontos.bronze;
+        if (elTotal)  elTotal.textContent  = pontos.total;
+
+        // ── Jogadores ─────────────────────────────────────────────────────────
+        // Filtra jogadores pelo paisId.
+        // Aceita tanto jogadores com paisId direto quanto dentro de pais.jogadores{}
+        let jogadoresDoPais = todosJogadores.filter(j => j.paisId === pais.id);
+
+        // Fallback: usa pais.jogadores se existir
+        if (jogadoresDoPais.length === 0 && pais.jogadores && typeof pais.jogadores === 'object') {
+          const idsNoPais = Object.keys(pais.jogadores);
+          jogadoresDoPais = todosJogadores.filter(j => idsNoPais.includes(j.id));
+        }
+
+        const gridEl   = document.getElementById('jogadores-grid');
+        const emptyJog = document.getElementById('jogadores-empty');
+
+        if (jogadoresDoPais.length === 0) {
+          if (gridEl)   gridEl.innerHTML = '';
+          if (emptyJog) emptyJog.classList.remove('hidden');
+        } else {
+          if (emptyJog) emptyJog.classList.add('hidden');
+          if (gridEl) {
+            gridEl.innerHTML = '';
+
+            // Ordena por tier (menor = melhor)
+            const ordenados = jogadoresDoPais.slice().sort((a, b) => (a.tier || 99) - (b.tier || 99));
+
+            ordenados.forEach(j => {
+              const tier = j.tier || '?';
+              const card = document.createElement('div');
+              card.className = 'player-card fade-in';
+              card.innerHTML = `
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="text-[#94A3B8] text-sm">👤</span>
+                  <span class="font-semibold text-[#F8FAFC] truncate">${escapeHtml(j.nick || '—')}</span>
+                </div>
+                <span class="tier-badge tier-${tier} text-xs font-bold px-2 py-0.5 rounded-full shrink-0 flex items-center">
+                  T${tier}
+                </span>
+              `;
+              gridEl.appendChild(card);
+            });
+          }
+        }
+
+        // ── Histórico por modalidade ───────────────────────────────────────────
+        const historico = Medalhas.getHistoricoPais(pais.id, todasMedalhas);
+        const tbody      = document.getElementById('tbody-historico');
+        const emptyHist  = document.getElementById('historico-empty');
+        const tabelaHist = document.getElementById('tabela-historico');
+
+        if (historico.length === 0) {
+          if (tbody)      tbody.innerHTML = '';
+          if (emptyHist)  emptyHist.classList.remove('hidden');
+          if (tabelaHist) tabelaHist.classList.add('hidden');
+        } else {
+          if (emptyHist)  emptyHist.classList.add('hidden');
+          if (tabelaHist) tabelaHist.classList.remove('hidden');
+          if (tbody) {
+            tbody.innerHTML = '';
+
+            // Ordena por pontos decrescente
+            const ordenado = historico.slice().sort((a, b) => (b.pontos || 0) - (a.pontos || 0));
+
+            ordenado.forEach((m, idx) => {
+              const delay = idx * 50;
+              const tr = document.createElement('tr');
+              tr.className = 'border-b border-[#334155] last:border-0 hover:bg-[rgba(255,255,255,0.02)] transition-colors';
+              tr.style.animationDelay = delay + 'ms';
+
+              let posClass = 'pos-other';
+              if (m.posicao === 1)      posClass = 'pos-medal-1';
+              else if (m.posicao === 2) posClass = 'pos-medal-2';
+              else if (m.posicao === 3) posClass = 'pos-medal-3';
+
+              const posTxt = m.posicao ? m.posicao + 'º' : '—';
+              const icone  = Medalhas.icone(m.posicao);
+
+              tr.innerHTML = `
+                <td class="py-3 px-4 font-semibold text-[#F8FAFC]">
+                  ${escapeHtml(Medalhas.nomeModalidade(m.modalidade))}
+                </td>
+                <td class="py-3 px-3 text-center font-bold ${posClass}">
+                  ${escapeHtml(posTxt)}
+                </td>
+                <td class="py-3 px-3 text-center text-xl">
+                  ${icone || '<span class="text-[#334155] text-sm">—</span>'}
+                </td>
+                <td class="py-3 px-4 text-right font-extrabold text-[#F5A623]">
+                  ${m.pontos || 0}
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        }
+      }
+    };
+
+    // ─── Boot ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => PaisPage.init());
+  </script>
+
+</body>
+</html>

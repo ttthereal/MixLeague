@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Draft Snake — Mix League</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    @keyframes borderPulse {
+      0%, 100% { border-color: #F5A623; box-shadow: 0 0 0 0 rgba(245,166,35,0.4); }
+      50%       { border-color: #F5A623; box-shadow: 0 0 0 8px rgba(245,166,35,0); }
+    }
+    .active-team-card {
+      animation: borderPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pickFlash {
+      0%   { background-color: inherit; }
+      30%  { background-color: rgba(245,166,35,0.35); }
+      100% { background-color: inherit; }
+    }
+    .pick-flash {
+      animation: pickFlash 0.8s ease forwards;
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-slide-up { animation: fadeSlideUp 0.3s ease forwards; }
+
+    .tier-badge-1 { background-color: #F5A623; color: #0F172A; }
+    .tier-badge-2 { background-color: #94A3B8; color: #0F172A; }
+    .tier-badge-3 { background-color: #CD7F32; color: #F8FAFC; }
+    .tier-badge-4 { background-color: #27AE60; color: #F8FAFC; }
+    .tier-badge-5 { background-color: #3B82F6; color: #F8FAFC; }
+
+    .player-card:hover:not(.disabled):not(.unavailable) {
+      background-color: #273549;
+      cursor: pointer;
+    }
+    .player-card.disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .player-card.unavailable {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .slot-filled { color: #F8FAFC; font-weight: 600; }
+    .slot-empty  { color: #94A3B8; font-style: italic; }
+
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+    }
+    .toast {
+      padding: 12px 20px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; opacity: 0;
+      animation: fadeSlideUp 0.3s ease forwards;
+      min-width: 220px; max-width: 340px;
+    }
+    .toast-success { background: #27AE60; color: #fff; }
+    .toast-error   { background: #E74C3C; color: #fff; }
+    .toast-info    { background: #1E3A5F; color: #F8FAFC; border: 1px solid #334155; }
+
+    /* Setup overlay steps */
+    .setup-card-num {
+      background: #1E293B;
+      border: 2px solid #334155;
+      border-radius: 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+      padding: 2.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 130px;
+    }
+    .setup-card-num:hover {
+      border-color: #F5A623;
+      background: #273549;
+      transform: translateY(-3px);
+    }
+
+    .capitao-card {
+      background: #0F172A;
+      border: 2px solid #334155;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .capitao-card:hover {
+      border-color: #F5A623;
+      background: #1a2638;
+    }
+    .capitao-card.selecionado {
+      border-color: #F5A623;
+      background: #1e2f1a;
+    }
+    .capitao-card.selecionado .cap-check {
+      background: #F5A623;
+      color: #0F172A;
+    }
+    .cap-check {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      flex-shrink: 0;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* Scrollbar customizada para o overlay */
+    .overlay-scroll::-webkit-scrollbar { width: 6px; }
+    .overlay-scroll::-webkit-scrollbar-track { background: #0F172A; }
+    .overlay-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-[#0F172A] text-[#F8FAFC] font-['Inter'] min-h-screen">
+
+  <!-- NAV -->
+  <nav id="main-nav" class="bg-[#1E293B] border-b border-[#334155] px-6 py-3 flex items-center justify-between">
+    <a href="dashboard.html" class="text-xl font-bold text-[#F5A623]">🏅 Mix League</a>
+    <div class="flex gap-4 text-sm items-center">
+      <a href="dashboard.html" class="hover:text-[#F5A623] transition">Dashboard</a>
+      <a href="draft.html" class="text-[#F5A623] font-semibold">Draft</a>
+      <a href="modalidade.html" class="hover:text-[#F5A623] transition">Modalidades</a>
+      <a href="admin.html" id="nav-admin" class="hover:text-[#F5A623] transition hidden">Admin</a>
+      <button onclick="Auth.logout()" class="text-red-400 hover:text-red-300 transition">Sair</button>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       SETUP OVERLAY (modal fullscreen)
+  ═══════════════════════════════════════════════════════════════════════════ -->
+  <div id="setup-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+       style="background:rgba(15,23,42,0.97)">
+
+    <!-- ── STEP 1: Número de times ─────────────────────────────────────────── -->
+    <div id="setup-step-1" class="w-full max-w-xl">
+      <div class="bg-[#1E293B] border border-[#334155] rounded-2xl p-8">
+        <h2 class="text-2xl font-bold text-[#F5A623] text-center mb-2">Configurar Draft</h2>
+        <p class="text-[#94A3B8] text-center text-sm mb-8">Quantos times participarão do campeonato?</p>
+
+        <div class="flex justify-center gap-5 flex-wrap">
+          <div class="setup-card-num" onclick="Draft._selecionarNumTimes(2)">
+            <span class="text-5xl font-black text-[#F5A623]">2</span>
+            <span class="text-sm text-[#94A3B8] font-semibold">Times</span>
+            <span class="text-xs text-[#334155] mt-1">10 picks</span>
+          </div>
+          <div class="setup-card-num" onclick="Draft._selecionarNumTimes(3)">
+            <span class="text-5xl font-black text-[#F5A623]">3</span>
+            <span class="text-sm text-[#94A3B8] font-semibold">Times</span>
+            <span class="text-xs text-[#334155] mt-1">15 picks</span>
+          </div>
+          <div class="setup-card-num" onclick="Draft._selecionarNumTimes(4)">
+            <span class="text-5xl font-black text-[#F5A623]">4</span>
+            <span class="text-sm text-[#94A3B8] font-semibold">Times</span>
+            <span class="text-xs text-[#334155] mt-1">20 picks</span>
+          </div>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+          <button onclick="Draft._fecharSetup()"
+            class="text-sm text-[#94A3B8] hover:text-[#F8FAFC] transition px-4 py-2 rounded-lg border border-[#334155] hover:border-[#94A3B8]">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Seleção de Capitães ─────────────────────────────────────── -->
+    <div id="setup-step-2" class="hidden w-full max-w-2xl">
+      <div class="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 flex flex-col" style="max-height:90vh;">
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+          <div>
+            <h2 class="text-xl font-bold text-[#F5A623]">Selecionar Capitães</h2>
+            <p class="text-[#94A3B8] text-sm mt-0.5">Clique nos jogadores para marcá-los como capitão</p>
+          </div>
+          <div class="bg-[#0F172A] border border-[#334155] rounded-xl px-4 py-2 text-center">
+            <span id="capitaes-contador" class="text-2xl font-black text-[#F5A623]">0</span>
+            <span id="capitaes-total-label" class="text-sm text-[#94A3B8]"> / 0 selecionados</span>
+          </div>
+        </div>
+
+        <!-- Grade de jogadores -->
+        <div id="capitaes-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto overlay-scroll flex-1 pr-1 min-h-0">
+          <p class="text-[#94A3B8] text-sm text-center py-6 col-span-2">Carregando jogadores...</p>
+        </div>
+
+        <div class="flex justify-between mt-5 flex-shrink-0 pt-3 border-t border-[#334155]">
+          <button onclick="Draft._voltarStep1()"
+            class="px-5 py-2 rounded-lg border border-[#334155] text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#94A3B8] transition text-sm font-semibold">
+            ← Voltar
+          </button>
+          <button id="btn-confirmar-capitaes" onclick="Draft._confirmarCapitaes()" disabled
+            class="px-6 py-2 rounded-lg bg-[#F5A623] text-[#0F172A] font-bold text-sm transition opacity-40 cursor-not-allowed">
+            Confirmar Capitães →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Resultado do Sorteio ────────────────────────────────────── -->
+    <div id="setup-step-3" class="hidden w-full max-w-2xl">
+      <div class="bg-[#1E293B] border border-[#334155] rounded-2xl p-6 flex flex-col" style="max-height:90vh;">
+        <div class="text-center mb-5 flex-shrink-0">
+          <div class="text-4xl mb-2">🎲</div>
+          <h2 class="text-xl font-bold text-[#F5A623]">Ordem do Draft Sorteada!</h2>
+          <p class="text-[#94A3B8] text-sm mt-1">Confira os times e a ordem das picks</p>
+        </div>
+
+        <!-- Tabela resultado -->
+        <div id="ordem-resultado" class="overflow-y-auto overlay-scroll flex-1 min-h-0">
+          <!-- Gerado por JS -->
+        </div>
+
+        <div class="flex justify-between mt-5 flex-shrink-0 pt-3 border-t border-[#334155]">
+          <button onclick="Draft._voltarStep2()"
+            class="px-5 py-2 rounded-lg border border-[#334155] text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#94A3B8] transition text-sm font-semibold">
+            ← Voltar
+          </button>
+          <button onclick="Draft._confirmarEIniciarDraft()" id="btn-confirmar-draft"
+            class="px-6 py-2 rounded-lg bg-[#F5A623] text-[#0F172A] font-bold text-sm transition hover:bg-yellow-400 flex items-center gap-2">
+            🚀 Iniciar Draft!
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- /setup-overlay -->
+
+  <!-- BANNER DE STATUS -->
+  <div id="status-banner" class="hidden bg-[#1E3A5F] border-b border-[#334155] px-6 py-3 text-center">
+    <span id="status-text" class="text-sm font-bold tracking-wide text-[#F8FAFC]"></span>
+  </div>
+
+  <!-- MENSAGEM DE ESTADO (aguardando / finalizado) -->
+  <div id="state-message" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:5rem 1rem; text-align:center;">
+    <div id="state-icon" class="text-6xl mb-4"></div>
+    <h2 id="state-title" class="text-2xl font-bold text-[#F5A623] mb-2"></h2>
+    <p id="state-desc" class="text-[#94A3B8] max-w-md"></p>
+  </div>
+
+  <!-- CONTROLES ADMIN (fora do draft-content para aparecer mesmo antes de iniciar) -->
+  <div id="admin-controls" class="hidden max-w-screen-xl mx-auto px-4 pt-4">
+    <div class="flex gap-3 justify-end">
+      <button id="btn-iniciar" onclick="Draft.iniciarDraft()"
+        class="bg-[#F5A623] hover:bg-yellow-400 text-[#0F172A] font-bold px-5 py-2 rounded-lg transition flex items-center gap-2">
+        🎲 Iniciar Draft
+      </button>
+      <button id="btn-resetar" onclick="Draft.resetarDraft()"
+        class="bg-[#E74C3C] hover:bg-red-400 text-white font-bold px-5 py-2 rounded-lg transition flex items-center gap-2">
+        🔄 Resetar Draft
+      </button>
+    </div>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL DO DRAFT -->
+  <div id="draft-content" style="display:none" class="max-w-screen-xl mx-auto px-4 py-6">
+
+    <div class="flex gap-6 flex-col lg:flex-row">
+
+      <!-- COLUNA ESQUERDA: Pool de Jogadores (40%) -->
+      <div class="lg:w-[40%] flex flex-col gap-4">
+        <div class="bg-[#1E293B] border border-[#334155] rounded-xl p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-[#F5A623]">Pool de Jogadores</h2>
+            <span id="pool-count" class="text-xs text-[#94A3B8] bg-[#0F172A] px-2 py-1 rounded-full">0 disponíveis</span>
+          </div>
+
+          <!-- Indicador de Tier Atual -->
+          <div id="tier-atual-info" style="display:none" class="mb-4 p-3 bg-[#0F172A] border border-[#334155] rounded-xl">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-[#94A3B8] font-semibold uppercase tracking-wide">Tier da Rodada</span>
+              <span id="tier-atual-badge" class="text-xs font-bold px-3 py-1 rounded-full">T?</span>
+            </div>
+            <div id="tier-ordem-mini" class="flex gap-1 flex-wrap"></div>
+          </div>
+
+          <!-- Lista de Jogadores -->
+          <div id="player-pool" class="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
+            <p class="text-[#94A3B8] text-sm text-center py-6">Carregando jogadores...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: Times (60%) -->
+      <div class="lg:w-[60%] flex flex-col gap-4">
+        <h2 class="text-lg font-bold text-[#F5A623]">Times</h2>
+        <div id="times-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Cards gerados por JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/draft.js"></script>
+</body>
+</html>
