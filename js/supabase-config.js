@@ -48,7 +48,7 @@ async function seedInitialData() {
 
     await sb.from('config').upsert({
       id: 'main',
-      codigo_acesso: '1234',
+      codigo_acesso: 'mixleague',
       modalidades: ['x1', 'braco_direito', 'retake', '5x5', 'corrida_armada']
     }, { onConflict: 'id' });
 

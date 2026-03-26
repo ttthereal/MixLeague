@@ -86,6 +86,11 @@ const DB = {
     if (error) throw error;
   },
 
+  async limparMedalhas() {
+    const { error } = await sb.from('medalhas').delete().neq('id', '');
+    if (error) throw error;
+  },
+
   async salvarPais(id, dados) {
     const row = { id, nome: dados.nome, bandeira: dados.bandeira, jogadores: dados.jogadores || {} };
     const { error } = await sb.from('paises').upsert(row, { onConflict: 'id' });

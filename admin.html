@@ -1221,7 +1221,7 @@
           await Promise.all(promessasBrackets);
 
           // 2. Remove todas as medalhas
-          await db.ref('mixleague/medalhas').set(null);
+          await DB.limparMedalhas();
 
           // 3. Recarrega dados frescos para reset
           const [jogadores, paises] = await Promise.all([DB.getJogadores(), DB.getPaises()]);
